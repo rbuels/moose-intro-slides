@@ -1,0 +1,672 @@
+<!-- BEGIN s5 -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" 
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Moose Intro</title>
+<meta name="generator" content="Spork-S5" />
+<meta name="version" content="Spork-S5 0.04" />
+<meta name="author" content="Robert Buels" />
+<link rel="stylesheet" href="ui/slides.css" type="text/css" media="projection" id="slideProj" />
+<link rel="stylesheet" href="ui/opera.css" type="text/css" media="projection" id="operaFix" />
+<link rel="stylesheet" href="ui/print.css" type="text/css" media="print" id="slidePrint" />
+  <link rel="stylesheet" type="text/css" href="" />
+<script src="ui/slides.js" type="text/javascript"></script>
+</head>
+<body>
+
+<div class="layout">
+  <div id="currentSlide"></div>
+  <div id="header"></div>
+  <div id="footer">
+    <h2>Robert Buels</h2>
+    <h2>rbuels@cpan.org</h2>
+    <div id="controls"></div>
+  </div>
+</div>
+
+<div class="slide">
+    <h1>Introduction to Moose</h1>
+    <h2>Portland, Oregon</h2>
+    <h3>June 8, 2011</h3>
+</div>
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Introduction to Moose</h1>
+<p>
+Guess what!  This is the Moose intro docs in the form of a talk!
+
+</p>
+<p>
+This is not an advanced talk.
+
+</p>
+<p>
+Lots of the examples were written by Stevan Little, Dave Rolsky, and
+probably others.
+
+</p>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>First example class</h1>
+<pre class="formatter_pre">package Person;
+
+use DateTime;
+use DateTime::Format::Natural;
+use Moose;
+use Moose::Util::TypeConstraints;
+
+has name =&gt; &#40;
+    is       =&gt; &#39;rw&#39;,
+    isa      =&gt; &#39;Str&#39;,
+    required =&gt; 1,
+&#41;;
+
+# Moose doesn&#39;t know about non-Moose-based classes.
+class_type &#39;DateTime&#39;;
+
+my $en_parser = DateTime::Format::Natural-&gt;new&#40;
+    lang      =&gt; &#39;en&#39;,
+    time_zone =&gt; &#39;UTC&#39;,
+&#41;;
+
+coerce &#39;DateTime&#39;
+    =&gt; from &#39;Str&#39;
+    =&gt; via { $en_parser-&gt;parse_datetime&#40;$_&#41; };
+
+has birth_date =&gt; &#40;
+    is      =&gt; &#39;rw&#39;,
+    isa     =&gt; &#39;DateTime&#39;,
+    coerce  =&gt; 1,
+    handles =&gt; { birth_year =&gt; &#39;year&#39; },
+&#41;;
+
+enum &#39;ShirtSize&#39; =&gt; qw&#40; s m l xl xxl &#41;;
+
+has shirt_size =&gt; &#40;
+    is      =&gt; &#39;rw&#39;,
+    isa     =&gt; &#39;ShirtSize&#39;,
+    default =&gt; &#39;l&#39;,
+&#41;;
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Second example class</h1>
+<pre class="formatter_pre">package User;
+
+use Email::Valid;
+use Moose;
+use Moose::Util::TypeConstraints;
+
+extends &#39;Person&#39;;
+
+subtype &#39;Email&#39;
+    =&gt; as &#39;Str&#39;
+    =&gt; where { Email::Valid-&gt;address&#40;$_&#41; }
+    =&gt; message { &#34;$_ is not a valid email address&#34; };
+
+has email_address =&gt; &#40;
+    is       =&gt; &#39;rw&#39;,
+    isa      =&gt; &#39;Email&#39;,
+    required =&gt; 1,
+&#41;;
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Use</h1>
+<pre class="formatter_pre">my $jeff = Person-&gt;new&#40;
+               name       =&gt; &#39;Jeff Lavallee&#39;,
+               shirt_size =&gt; &#39;s&#39;,
+           &#41;;
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Validation</h1>
+<pre class="formatter_pre">my $eric = Person-&gt;new&#40;
+               name       =&gt; &#39;Eric Wilhelm&#39;,
+               shirt_size =&gt; &#39;tank/ladies small&#39;,
+           &#41;;
+</pre>
+<small>continued...</small>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Validation</h1>
+<pre class="formatter_pre">my $eric = Person-&gt;new&#40;
+               name       =&gt; &#39;Eric Wilhelm&#39;,
+               shirt_size =&gt; &#39;tank/ladies small&#39;,
+           &#41;;
+
+----
+rob@nightshade ~$ perl test.pl
+Attribute &#40;shirt_size&#41; does not pass the type constraint because: Validation
+failed for &#39;ShirtSize&#39; with value tank/ladies small at /home/rob/cpan-lib/li
+b/perl5/i686-linux-gnu-thread-multi/Moose/Meta/Attribute.pm line 883
+      Moose::Meta::Attribute::_coerce_and_verify&#40;&#39;Moose::Meta::Attribute=HAS
+H&#40;0x9f6cad8&#41;&#39;, &#39;tank/ladies small&#39;, &#39;Person=HASH&#40;0x9f75530&#41;&#39;&#41; called at /h
+ome/rob/cpan-lib/lib/perl5/i686-linux-gnu-thread-multi/Moose/Meta/Attribute.
+pm line 483
+      Moose::Meta::Attribute::initialize_instance_slot&#40;&#39;Moose::Meta::Attribu
+te=HASH&#40;0x9f6cad8&#41;&#39;, &#39;Moose::Meta::Instance=HASH&#40;0x9f6c868&#41;&#39;, &#39;Person=HASH&#40;0
+x9f75530&#41;&#39;, &#39;HASH&#40;0x94546f8&#41;&#39;&#41; called at /home/rob/cpan-lib/lib/perl5/i686-l
+inux-gnu-thread-multi/Class/MOP/Class.pm line 603
+      Class::MOP::Class::_construct_instance&#40;&#39;Moose::Meta::Class=HASH&#40;0x9dfa
+700&#41;&#39;, &#39;HASH&#40;0x94546f8&#41;&#39;&#41; called at /home/rob/cpan-lib/lib/perl5/i686-linux-
+gnu-thread-multi/Class/MOP/Class.pm line 576
+      Class::MOP::Class::new_object&#40;&#39;Moose::Meta::Class=HASH&#40;0x9dfa700&#41;&#39;, &#39;H
+ASH&#40;0x94546f8&#41;&#39;&#41; called at /home/rob/cpan-lib/lib/perl5/i686-linux-gnu-threa
+d-multi/Moose/Meta/Class.pm line 256
+      Moose::Meta::Class::new_object&#40;&#39;Moose::Meta::Class=HASH&#40;0x9dfa700&#41;&#39;, &#39;
+HASH&#40;0x94546f8&#41;&#39;&#41; called at /home/rob/cpan-lib/lib/perl5/i686-linux-gnu-thre
+ad-multi/Moose/Object.pm line 26
+      Moose::Object::new&#40;&#39;Person&#39;, &#39;name&#39;, &#39;Eric Wilhelm&#39;, &#39;shirt_size&#39;, &#39;ta
+nk/ladies small&#39;&#41; called at test.pl line 1
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>So there we see</h1>
+<ul>
+<li>inheritance</li>
+<li>types</li>
+<li>validation</li>
+<li>full backtraces &#40;love/hate&#41;</li>
+</ul>
+
+<small>continued...</small>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>So there we see</h1>
+<ul>
+<li>inheritance</li>
+<li>types</li>
+<li>validation</li>
+<li>full backtraces &#40;love/hate&#41;</li>
+</ul>
+
+<p>
+Nice.  But yawn.
+
+</p>
+<small>continued...</small>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>So there we see</h1>
+<ul>
+<li>inheritance</li>
+<li>types</li>
+<li>validation</li>
+<li>full backtraces &#40;love/hate&#41;</li>
+</ul>
+
+<p>
+Nice.  But yawn.
+
+</p>
+<ul>
+<li>but, did you see the <tt>coerce</tt>?</li>
+</ul>
+
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Coercion</h1>
+<pre class="formatter_pre">my $rob = Person-&gt;new&#40;
+              name =&gt; &#39;Rob Buels&#39;,
+              birth_date =&gt; &#39;yesterday&#39;,
+          &#41;;
+
+say $rob-&gt;birth_date-&gt;mdy;
+# 06-07-2011
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Coercion</h1>
+<pre class="formatter_pre">my $en_parser = DateTime::Format::Natural-&gt;new&#40;
+    lang      =&gt; &#39;en&#39;,
+    time_zone =&gt; &#39;UTC&#39;,
+&#41;;
+
+coerce &#39;DateTime&#39;
+    =&gt; from &#39;Str&#39;
+    =&gt; via { $en_parser-&gt;parse_datetime&#40;$_&#41; };
+
+has birth_date =&gt; &#40;
+    is      =&gt; &#39;rw&#39;,
+    isa     =&gt; &#39;DateTime&#39;,
+    coerce  =&gt; 1,
+    handles =&gt; { birth_year =&gt; &#39;year&#39; },
+&#41;;
+</pre>
+<ul>
+<li>sweet!</li>
+</ul>
+<small>continued...</small>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Coercion</h1>
+<pre class="formatter_pre">my $en_parser = DateTime::Format::Natural-&gt;new&#40;
+    lang      =&gt; &#39;en&#39;,
+    time_zone =&gt; &#39;UTC&#39;,
+&#41;;
+
+coerce &#39;DateTime&#39;
+    =&gt; from &#39;Str&#39;
+    =&gt; via { $en_parser-&gt;parse_datetime&#40;$_&#41; };
+
+has birth_date =&gt; &#40;
+    is      =&gt; &#39;rw&#39;,
+    isa     =&gt; &#39;DateTime&#39;,
+    coerce  =&gt; 1,
+    handles =&gt; { birth_year =&gt; &#39;year&#39; },
+&#41;;
+</pre>
+<ul>
+<li>sweet!</li>
+
+<ul>
+<li><tt>birth_date =&gt; &#39;yesterday&#39;</tt></li>
+<li>&#39;yesterday&#39; is not a <tt>DateTime</tt>.  it&#39;s a <tt>Str</tt>.</li>
+<li>got a coercion from <tt>Str</tt> to <tt>DateTime</tt>?  Yep!</li>
+<li><tt>$self-&gt;birth_date&#40; $en_parser-&gt;parse_datetime&#40;&#39;yesterday&#39;&#41; &#41;</tt></li>
+<li>did that return a <tt>DateTime</tt>?  Bully!</li>
+</ul></ul>
+
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Features so far</h1>
+<ul>
+<li>inheritance</li>
+<li>types</li>
+<li>validation</li>
+<li>full backtraces</li>
+<li>coercion</li>
+</ul>
+
+<p>
+All nice, but still ... eh.
+
+</p>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Roles: Because Inheritance Eats Your Codebase</h1>
+<pre class="formatter_pre">              MyCompanyStandardApp
+                /
+          DBLoader
+           /     \
+SpeciesLoader    AnnotationLoader
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Roles: Because Inheritance Eats Your Codebase</h1>
+<pre class="formatter_pre">              MyCompanyStandardApp
+                /               \
+          DBLoader             QueryTool
+           /     \
+SpeciesLoader    AnnotationLoader  .... use MyLogFunctions qw/ log_this /;
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Roles: Because Inheritance Eats Your Codebase</h1>
+<pre class="formatter_pre">              MyCompanyStandardApp
+                /               \
+          DBLoader             QueryTool
+           /     \                  \
+SpeciesLoader    AnnotationLoader  .... use MyLogFunctions qw/ log_this /;
+                          \           \
+                        AmazingAnnotationTool
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Roles: Because Inheritance Eats Your Codebase</h1>
+<pre class="formatter_pre">              MyCompanyStandardApp
+                /               \
+          DBLoader             QueryTool
+           /     \                  \
+SpeciesLoader    AnnotationLoader  .... use MyLogFunctions qw/ log_this /;
+                          \           \
+                        AmazingAnnotationTool
+                               |
+                        AmazingChickenAnnotationTool
+</pre>
+<small>continued...</small>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Roles: Because Inheritance Eats Your Codebase</h1>
+<pre class="formatter_pre">              MyCompanyStandardApp
+                /               \
+          DBLoader             QueryTool
+           /     \                  \
+SpeciesLoader    AnnotationLoader  .... use MyLogFunctions qw/ log_this /;
+                          \           \
+                        AmazingAnnotationTool
+                               |
+                        AmazingChickenAnnotationTool
+</pre>
+<ul>
+<li>And now I need to make a command-line app that is not a <tt>CompanyStandardApp</tt>, but uses the functionality in <tt>QueryTool</tt>.  And also does nearly the same kind of logging, but not quite.</li>
+</ul>
+<small>continued...</small>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Roles: Because Inheritance Eats Your Codebase</h1>
+<pre class="formatter_pre">              MyCompanyStandardApp
+                /               \
+          DBLoader             QueryTool
+           /     \                  \
+SpeciesLoader    AnnotationLoader  .... use MyLogFunctions qw/ log_this /;
+                          \           \
+                        AmazingAnnotationTool
+                               |
+                        AmazingChickenAnnotationTool
+</pre>
+<ul>
+<li>And now I need to make a command-line app that is not a <tt>CompanyStandardApp</tt>, but uses the functionality in <tt>QueryTool</tt>.  And also does nearly the same kind of logging, but not quite.</li>
+<li>And this just a little toy example!</li>
+</ul>
+
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Roles</h1>
+<pre class="formatter_pre">          CompanyStandardApp
+         /                 \
+        /  DBLoader QueryMaker      Logger
+       /   /     \       |   \     /
+SpeciesLoader   AmazingAnnotationTool
+                       |
+     AmazingChickenAnnotationTool
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Roles</h1>
+<pre class="formatter_pre">package Logger;
+use Moose::Role;
+
+sub log_this { ... }
+
+package AmazingAnnotationTool;
+use Moose;
+
+with &#39;QueryMaker&#39;, &#39;DBLoader&#39;, &#39;CompanyStandardApp&#39;, &#39;Logger&#39;;
+
+package AmazingChickenAnnotationTool;
+use Moose;
+
+extends &#39;AmazingAnnotationTool&#39;;
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Roles</h1>
+<pre class="formatter_pre">          CompanyStandardApp
+         /                 \
+        /  DBLoader QueryMaker--\   Logger
+       /   /     \       |   \   \ /     \&#40;method modify&#41;
+SpeciesLoader   AmazingAnnotationTool     \
+                       |           \------ **NewThing**
+     AmazingChickenAnnotationTool
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Roles</h1>
+<pre class="formatter_pre">package NewThing;
+use Moose;
+
+with &#39;Logger&#39;, &#39;QueryMaker&#39;;
+
+after &#39;log_this&#39; =&gt; sub {
+    my &#40; $self, $message &#41; = @_;
+    $self-&gt;_also_log_someplace_else&#40; $message &#41;;
+};
+</pre>
+<ul>
+<li>PSA: This logging stuff is just an example!  Use Log4Perl in the real world!</li>
+</ul>
+
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Method Modifiers</h1>
+<pre class="formatter_pre">package Example;
+
+use Moose;
+
+sub foo {
+    print &#34;    foo\n&#34;;
+}
+
+before &#39;foo&#39; =&gt; sub { print &#34;about to call foo\n&#34;; };
+after &#39;foo&#39;  =&gt; sub { print &#34;just called foo\n&#34;; };
+
+around &#39;foo&#39; =&gt; sub {
+    my $orig = shift;
+    my $self = shift;
+
+    print &#34;  I&#39;m around foo\n&#34;;
+
+    $self-&gt;$orig&#40;@_&#41;;
+
+    print &#34;  I&#39;m still around foo\n&#34;;
+};
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Method Modifiers</h1>
+<pre class="formatter_pre">rob@nightshade ~$ perl example.pl
+about to call foo
+  I&#39;m around foo
+    foo
+  I&#39;m still around foo
+just called foo
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Delegation</h1>
+<pre class="formatter_pre">package Website;
+
+use Moose;
+
+has &#39;uri&#39; =&gt; &#40;
+    is      =&gt; &#39;ro&#39;,
+    isa     =&gt; &#39;URI&#39;,
+    handles =&gt; [qw&#40; host path &#41;],
+&#41;;
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Delegation</h1>
+<pre class="formatter_pre">package Website;
+
+use Moose;
+
+has &#39;uri&#39; =&gt; &#40;
+    is      =&gt; &#39;ro&#39;,
+    isa     =&gt; &#39;URI&#39;,
+    handles =&gt; {
+        hostname =&gt; &#39;host&#39;,
+        path     =&gt; &#39;path&#39;,
+    },
+&#41;;
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+<!-- BEGIN slide -->
+<div class="slide">
+
+<h1>Performance Considerations</h1>
+<ul>
+<li>Moose adds to startup time</li>
+<li>Some runtime slowdown</li>
+
+<ul>
+<li>but that mostly goes away with</li>
+</ul></ul>
+<pre class="formatter_pre">
+__PACKAGE__-&gt;meta-&gt;make_immutable;
+</pre>
+
+</div>
+<!-- END slide -->
+
+
+</body>
+</html>
+<!-- END s5 -->

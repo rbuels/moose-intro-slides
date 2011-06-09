@@ -1,0 +1,359 @@
+----
+presentation_topic: Moose Intro
+presentation_title: Introduction to Moose
+presentation_place: Portland, Oregon
+presentation_date: June 8, 2011
+----
+= Introduction to Moose
+
+Guess what!  This is the Moose intro docs in the form of a talk!
+
+This is not an advanced talk.
+
+Lots of the examples were written by Stevan Little, Dave Rolsky, and
+probably others.
+
+----
+= First example class
+
+  package Person;
+
+  use DateTime;
+  use DateTime::Format::Natural;
+  use Moose;
+  use Moose::Util::TypeConstraints;
+
+  has name => (
+      is       => 'rw',
+      isa      => 'Str',
+      required => 1,
+  );
+
+  # Moose doesn't know about non-Moose-based classes.
+  class_type 'DateTime';
+
+  my $en_parser = DateTime::Format::Natural->new(
+      lang      => 'en',
+      time_zone => 'UTC',
+  );
+
+  coerce 'DateTime'
+      => from 'Str'
+      => via { $en_parser->parse_datetime($_) };
+
+  has birth_date => (
+      is      => 'rw',
+      isa     => 'DateTime',
+      coerce  => 1,
+      handles => { birth_year => 'year' },
+  );
+
+  enum 'ShirtSize' => qw( s m l xl xxl );
+
+  has shirt_size => (
+      is      => 'rw',
+      isa     => 'ShirtSize',
+      default => 'l',
+  );
+
+----
+= Second example class
+
+  package User;
+
+  use Email::Valid;
+  use Moose;
+  use Moose::Util::TypeConstraints;
+
+  extends 'Person';
+
+  subtype 'Email'
+      => as 'Str'
+      => where { Email::Valid->address($_) }
+      => message { "$_ is not a valid email address" };
+
+  has email_address => (
+      is       => 'rw',
+      isa      => 'Email',
+      required => 1,
+  );
+
+----
+= Use
+
+  my $jeff = Person->new(
+                 name       => 'Jeff Lavallee',
+                 shirt_size => 's',
+             );
+
+----
+= Validation
+
+  my $eric = Person->new(
+                 name       => 'Eric Wilhelm',
+                 shirt_size => 'tank/ladies small',
+             );
+
++  ----
+  rob@nightshade ~$ perl test.pl
+  Attribute (shirt_size) does not pass the type constraint because: Validation
+  failed for 'ShirtSize' with value tank/ladies small at /home/rob/cpan-lib/li
+  b/perl5/i686-linux-gnu-thread-multi/Moose/Meta/Attribute.pm line 883
+        Moose::Meta::Attribute::_coerce_and_verify('Moose::Meta::Attribute=HAS
+  H(0x9f6cad8)', 'tank/ladies small', 'Person=HASH(0x9f75530)') called at /h
+  ome/rob/cpan-lib/lib/perl5/i686-linux-gnu-thread-multi/Moose/Meta/Attribute.
+  pm line 483
+        Moose::Meta::Attribute::initialize_instance_slot('Moose::Meta::Attribu
+  te=HASH(0x9f6cad8)', 'Moose::Meta::Instance=HASH(0x9f6c868)', 'Person=HASH(0
+  x9f75530)', 'HASH(0x94546f8)') called at /home/rob/cpan-lib/lib/perl5/i686-l
+  inux-gnu-thread-multi/Class/MOP/Class.pm line 603
+        Class::MOP::Class::_construct_instance('Moose::Meta::Class=HASH(0x9dfa
+  700)', 'HASH(0x94546f8)') called at /home/rob/cpan-lib/lib/perl5/i686-linux-
+  gnu-thread-multi/Class/MOP/Class.pm line 576
+        Class::MOP::Class::new_object('Moose::Meta::Class=HASH(0x9dfa700)', 'H
+  ASH(0x94546f8)') called at /home/rob/cpan-lib/lib/perl5/i686-linux-gnu-threa
+  d-multi/Moose/Meta/Class.pm line 256
+        Moose::Meta::Class::new_object('Moose::Meta::Class=HASH(0x9dfa700)', '
+  HASH(0x94546f8)') called at /home/rob/cpan-lib/lib/perl5/i686-linux-gnu-thre
+  ad-multi/Moose/Object.pm line 26
+        Moose::Object::new('Person', 'name', 'Eric Wilhelm', 'shirt_size', 'ta
+  nk/ladies small') called at test.pl line 1
+
+----
+= So there we see
+
+* inheritance
+* types
+* validation
+* full backtraces (love/hate)
+
++Nice.  But yawn.
+
++* but, did you see the |coerce|?
+
+----
+= Coercion
+
+  my $rob = Person->new(
+                name => 'Rob Buels',
+                birth_date => 'yesterday',
+            );
+
+  say $rob->birth_date->mdy;
+  # 06-07-2011
+
+----
+= Coercion
+
+  my $en_parser = DateTime::Format::Natural->new(
+      lang      => 'en',
+      time_zone => 'UTC',
+  );
+
+  coerce 'DateTime'
+      => from 'Str'
+      => via { $en_parser->parse_datetime($_) };
+
+  has birth_date => (
+      is      => 'rw',
+      isa     => 'DateTime',
+      coerce  => 1,
+      handles => { birth_year => 'year' },
+  );
+
+* sweet!
++** |birth_date => 'yesterday'|
+** 'yesterday' is not a |DateTime|.  it's a |Str|.
+** got a coercion from |Str| to |DateTime|?  Yep!
+** |$self->birth_date( $en_parser->parse_datetime('yesterday') )|
+** did that return a |DateTime|?  Bully!
+
+----
+= Features so far
+
+* inheritance
+* types
+* validation
+* full backtraces
+* coercion
+
+All nice, but still ... eh.
+
+----
+= Roles: Because Inheritance Eats Your Codebase
+
+                    MyCompanyStandardApp
+                      /
+                DBLoader
+                 /     \
+      SpeciesLoader    AnnotationLoader
+
+----
+= Roles: Because Inheritance Eats Your Codebase
+
+                    MyCompanyStandardApp
+                      /               \
+                DBLoader             QueryTool
+                 /     \
+      SpeciesLoader    AnnotationLoader  .... use MyLogFunctions qw/ log_this /;
+
+
+----
+= Roles: Because Inheritance Eats Your Codebase
+
+                    MyCompanyStandardApp
+                      /               \
+                DBLoader             QueryTool
+                 /     \                  \
+      SpeciesLoader    AnnotationLoader  .... use MyLogFunctions qw/ log_this /;
+                                \           \
+                              AmazingAnnotationTool
+
+----
+= Roles: Because Inheritance Eats Your Codebase
+
+                    MyCompanyStandardApp
+                      /               \
+                DBLoader             QueryTool
+                 /     \                  \
+      SpeciesLoader    AnnotationLoader  .... use MyLogFunctions qw/ log_this /;
+                                \           \
+                              AmazingAnnotationTool
+                                     |
+                              AmazingChickenAnnotationTool
+
+
++
+* And now I need to make a command-line app that is not a |CompanyStandardApp|, but uses the functionality in |QueryTool|.  And also does nearly the same kind of logging, but not quite.
++* And this just a little toy example!
+
+----
+= Roles
+
+                        CompanyStandardApp
+                       /                 \
+                      /  DBLoader QueryMaker      Logger
+                     /   /     \       |   \     /
+              SpeciesLoader   AmazingAnnotationTool
+                                     |
+                   AmazingChickenAnnotationTool
+
+
+----
+= Roles
+
+  package Logger;
+  use Moose::Role;
+
+  sub log_this { ... }
+
+  package AmazingAnnotationTool;
+  use Moose;
+
+  with 'QueryMaker', 'DBLoader', 'CompanyStandardApp', 'Logger';
+
+  package AmazingChickenAnnotationTool;
+  use Moose;
+
+  extends 'AmazingAnnotationTool';
+
+----
+= Roles
+
+                        CompanyStandardApp
+                       /                 \
+                      /  DBLoader QueryMaker--\   Logger
+                     /   /     \       |   \   \ /     \(method modify)
+              SpeciesLoader   AmazingAnnotationTool     \
+                                     |           \------ **NewThing**
+                   AmazingChickenAnnotationTool
+
+----
+= Roles
+
+  package NewThing;
+  use Moose;
+
+  with 'Logger', 'QueryMaker';
+
+  after 'log_this' => sub {
+      my ( $self, $message ) = @_;
+      $self->_also_log_someplace_else( $message );
+  };
+
+
+* PSA: This logging stuff is just an example!  Use Log4Perl in the real world!
+
+----
+= Method Modifiers
+
+  package Example;
+
+  use Moose;
+
+  sub foo {
+      print "    foo\n";
+  }
+
+  before 'foo' => sub { print "about to call foo\n"; };
+  after 'foo'  => sub { print "just called foo\n"; };
+
+  around 'foo' => sub {
+      my $orig = shift;
+      my $self = shift;
+
+      print "  I'm around foo\n";
+
+      $self->$orig(@_);
+
+      print "  I'm still around foo\n";
+  };
+
+----
+= Method Modifiers
+
+  rob@nightshade ~$ perl example.pl
+  about to call foo
+    I'm around foo
+      foo
+    I'm still around foo
+  just called foo
+
+----
+= Delegation
+
+  package Website;
+
+  use Moose;
+
+  has 'uri' => (
+      is      => 'ro',
+      isa     => 'URI',
+      handles => [qw( host path )],
+  );
+
+----
+= Delegation
+
+  package Website;
+
+  use Moose;
+
+  has 'uri' => (
+      is      => 'ro',
+      isa     => 'URI',
+      handles => {
+          hostname => 'host',
+          path     => 'path',
+      },
+  );
+
+----
+= Performance Considerations
+
+* Moose adds to startup time
+* Some runtime slowdown
+** but that mostly goes away with
+
+  __PACKAGE__->meta->make_immutable;
+
